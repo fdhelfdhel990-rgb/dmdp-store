@@ -57,3 +57,10 @@ export function publicFileUrl(key: string): string {
 
   return base.toString();
 }
+
+export function publicImageUrl(key: string): string {
+  const normalizedKey = key.replace(/^\/+/, "");
+  const encodedKey = normalizedKey.split("/").map((segment) => encodeURIComponent(segment)).join("/");
+
+  return `/api/public/images/${encodedKey}`;
+}

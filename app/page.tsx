@@ -3,7 +3,7 @@ import Link from "next/link";
 import CustomerShell from "./_components/customer-shell";
 import { db } from "@/lib/db";
 import { products as starterProducts, categories as starterCategories, rupiah } from "@/lib/catalog";
-import { publicFileUrl } from "@/lib/r2";
+import { publicImageUrl } from "@/lib/r2";
 import { connection } from "next/server";
 
 export const instant = false;
@@ -28,7 +28,7 @@ export default async function Home() {
     ]);
     if(rows.length)catalogProducts=rows.map((row)=>({name:row.name,slug:row.slug,category:row.category.name,price:Number(row.basePrice),unit:row.unit,tone:row.tone,tag:row.tag??""}));
     if(cats.length)catalogCategories=cats;
-    if(hero){let imageUrl:string|null=null;try{if(hero.imagePath)imageUrl=publicFileUrl(hero.imagePath);}catch{/* public media domain not configured */}banner={title:hero.title,description:hero.description,buttonLabel:hero.buttonLabel,buttonUrl:hero.buttonUrl,imageUrl};}
+    if(hero){let imageUrl:string|null=null;try{if(hero.imagePath)imageUrl=publicImageUrl(hero.imagePath);}catch{/* public media domain not configured */}banner={title:hero.title,description:hero.description,buttonLabel:hero.buttonLabel,buttonUrl:hero.buttonUrl,imageUrl};}
   }catch{/* the bundled catalogue keeps the storefront usable while Supabase is unavailable */}
   return <CustomerShell><main>
     <section className="hero-slider"><article className="hero-slide active"><div className="site-container hero-slide-inner">{banner?.imageUrl?<div className="hero-art-fallback" style={{position:"relative",overflow:"hidden"}}><Image src={banner.imageUrl} alt={banner.title} fill priority style={{objectFit:"cover"}}/><span className="sr-only">{banner.description}</span></div>:<div className="hero-art-fallback"><div className="hero-fallback-brand"><span className="hero-fallback-mark">d</span><b>DMT PRINT</b><small>{banner?.title||"Semua kebutuhan cetak dalam satu tempat"}</small></div></div>}{banner?.buttonUrl&&banner.buttonLabel&&<Link className="button button-yellow hero-banner-cta" href={banner.buttonUrl}>{banner.buttonLabel}</Link>}</div></article></section>
