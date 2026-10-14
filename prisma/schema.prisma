@@ -1,0 +1,350 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              BigInt    @id @default(autoincrement())
+  name            String
+  email           String    @unique
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  password        String
+  rememberToken   String?   @map("remember_token")
+  isAdmin         Boolean   @default(false) @map("is_admin")
+  role            String    @default("admin")
+  isActive        Boolean   @default(true) @map("is_active")
+  lastLoginAt     DateTime? @map("last_login_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  assignedOrders  Order[]   @relation("AssignedAdmin")
+  archivedOrders  Order[]   @relation("ArchivedBy")
+  verifiedPayments Payment[] @relation("VerifiedBy")
+  statusHistories OrderStatusHistory[]
+  inventoryMovements InventoryMovement[]
+  cashbookEntries CashbookEntry[]
+  activityLogs ActivityLog[]
+  @@map("users")
+}
+
+model Category {
+  id          BigInt    @id @default(autoincrement())
+  name        String
+  slug        String    @unique
+  description String?
+  imagePath   String?   @map("image_path")
+  isActive    Boolean   @default(true) @map("is_active")
+  isFeatured  Boolean   @default(false) @map("is_featured")
+  sortOrder   Int       @default(0) @map("sort_order")
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  products    Product[]
+  @@map("categories")
+}
+
+model Product {
+  id                 BigInt    @id @default(autoincrement())
+  categoryId         BigInt    @map("category_id")
+  name               String
+  slug               String    @unique
+  sku                String    @unique
+  shortDescription   String?   @map("short_description")
+  description        String?
+  imagePath          String?   @map("image_path")
+  basePrice          BigInt    @map("base_price")
+  unit               String    @db.VarChar(50)
+  minimumOrder       Int       @default(1) @map("minimum_order")
+  stockOnHand        Int       @default(0) @map("stock_on_hand")
+  stockMinimum       Int       @default(0) @map("stock_minimum")
+  productionEstimate String?   @map("production_estimate")
+  tone               String    @default("blue") @db.VarChar(30)
+  tag                String?   @db.VarChar(50)
+  isActive           Boolean   @default(true) @map("is_active")
+  isFeatured         Boolean   @default(false) @map("is_featured")
+  sortOrder          Int       @default(0) @map("sort_order")
+  archivedAt         DateTime? @map("archived_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  category           Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  options            ProductOption[]
+  orderItems         OrderItem[]
+  inventoryMovements InventoryMovement[]
+  @@index([isActive, sortOrder])
+  @@index([categoryId, isActive])
+  @@map("products")
+}
+
+model ProductOption {
+  id        BigInt   @id @default(autoincrement())
+  productId BigInt   @map("product_id")
+  name      String
+  isRequired Boolean @default(false) @map("is_required")
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  values    ProductOptionValue[]
+  @@map("product_options")
+}
+
+model ProductOptionValue {
+  id                BigInt        @id @default(autoincrement())
+  productOptionId   BigInt        @map("product_option_id")
+  name              String
+  priceAdjustment   BigInt        @default(0) @map("price_adjustment")
+  isActive          Boolean       @default(true) @map("is_active")
+  sortOrder         Int           @default(0) @map("sort_order")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  option            ProductOption @relation(fields: [productOptionId], references: [id], onDelete: Cascade)
+  @@map("product_option_values")
+}
+
+model Customer {
+  id        BigInt   @id @default(autoincrement())
+  name      String
+  phone     String   @db.VarChar(30)
+  email     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  orders    Order[]
+  @@index([phone])
+  @@map("customers")
+}
+
+model Order {
+  id                    BigInt    @id @default(autoincrement())
+  orderNumber           String    @unique @map("order_number")
+  customerId            BigInt    @map("customer_id")
+  publicToken           String    @unique @map("public_token") @db.VarChar(64)
+  status                String    @default("pending_review")
+  estimatedSubtotal     BigInt    @map("estimated_subtotal")
+  shippingCost          BigInt    @default(0) @map("shipping_cost")
+  estimatedTotal        BigInt    @map("estimated_total")
+  finalTotal            BigInt?   @map("final_total")
+  finalPricedAt         DateTime? @map("final_priced_at")
+  amountPaid            BigInt    @default(0) @map("amount_paid")
+  paymentScheme         String?   @map("payment_scheme")
+  fulfillmentMethod     String    @map("fulfillment_method")
+  shippingAddress       String?   @map("shipping_address")
+  shippingRegion        String?   @map("shipping_region")
+  postalCode            String?   @map("postal_code") @db.VarChar(20)
+  addressNote           String?   @map("address_note")
+  latitude              Decimal?  @db.Decimal(10, 7)
+  longitude             Decimal?  @db.Decimal(10, 7)
+  customerNote          String?   @map("customer_note")
+  internalNote          String?   @map("internal_note")
+  customerApprovedAt    DateTime? @map("customer_approved_at")
+  revisionRequestedAt   DateTime? @map("revision_requested_at")
+  assignedAdminId       BigInt?   @map("assigned_admin_id")
+  productionStartedAt   DateTime? @map("production_started_at")
+  readyAt               DateTime? @map("ready_at")
+  completedAt           DateTime? @map("completed_at")
+  cancelledAt           DateTime? @map("cancelled_at")
+  archivedAt            DateTime? @map("archived_at")
+  archivedBy            BigInt?   @map("archived_by")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  customer              Customer  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  assignedAdmin         User?     @relation("AssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  archivedByUser        User?     @relation("ArchivedBy", fields: [archivedBy], references: [id], onDelete: SetNull)
+  items                 OrderItem[]
+  payments              Payment[]
+  statusHistories       OrderStatusHistory[]
+  cashbookEntries       CashbookEntry[]
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                 BigInt    @id @default(autoincrement())
+  orderId            BigInt    @map("order_id")
+  productId          BigInt?   @map("product_id")
+  productName        String    @map("product_name")
+  sku                String?
+  productImageDisk   String?   @map("product_image_disk")
+  productImagePath   String?   @map("product_image_path")
+  unit               String    @db.VarChar(50)
+  quantity           Int
+  basePrice          BigInt    @map("base_price")
+  optionsTotal       BigInt    @default(0) @map("options_total")
+  unitEstimate       BigInt    @map("unit_estimate")
+  unitFinalPrice     BigInt?   @map("unit_final_price")
+  subtotal           BigInt
+  finalSubtotal      BigInt?   @map("final_subtotal")
+  stockDeductedAt    DateTime? @map("stock_deducted_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  order              Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product            Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  options            OrderItemOption[]
+  files              OrderFile[]
+  inventoryMovements InventoryMovement[]
+  @@map("order_items")
+}
+
+model OrderItemOption {
+  id            BigInt    @id @default(autoincrement())
+  orderItemId   BigInt    @map("order_item_id")
+  optionName    String    @map("option_name")
+  optionValue   String    @map("option_value")
+  priceAdjustment BigInt  @default(0) @map("price_adjustment")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  orderItem     OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  @@map("order_item_options")
+}
+
+model OrderFile {
+  id           BigInt    @id @default(autoincrement())
+  orderItemId  BigInt    @map("order_item_id")
+  disk         String    @default("local")
+  path         String
+  originalName String    @map("original_name")
+  mimeType     String    @map("mime_type")
+  size         BigInt
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  orderItem    OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  @@map("order_files")
+}
+
+model OrderStatusHistory {
+  id        BigInt   @id @default(autoincrement())
+  orderId   BigInt   @map("order_id")
+  status    String
+  note      String?
+  userId    BigInt?  @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@map("order_status_histories")
+}
+
+model Payment {
+  id                BigInt    @id @default(autoincrement())
+  orderId           BigInt    @map("order_id")
+  method            String
+  paymentType       String    @map("payment_type")
+  amount            BigInt
+  status            String    @default("pending")
+  proofDisk         String?   @map("proof_disk")
+  proofPath         String?   @map("proof_path")
+  proofOriginalName String?   @map("proof_original_name")
+  proofMimeType     String?   @map("proof_mime_type")
+  proofSize         BigInt?   @map("proof_size")
+  verifiedAt        DateTime? @map("verified_at")
+  rejectedAt        DateTime? @map("rejected_at")
+  verifiedBy        BigInt?   @map("verified_by")
+  adminNote         String?   @map("admin_note")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  verifiedByUser    User?     @relation("VerifiedBy", fields: [verifiedBy], references: [id], onDelete: SetNull)
+  cashbookEntries   CashbookEntry[]
+  @@index([status])
+  @@map("payments")
+}
+
+model InventoryMovement {
+  id           BigInt    @id @default(autoincrement())
+  productId    BigInt    @map("product_id")
+  orderItemId  BigInt?   @map("order_item_id")
+  userId       BigInt?   @map("user_id")
+  type         String
+  quantity     Int
+  balanceAfter Int       @map("balance_after")
+  reference    String    @unique
+  note         String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItem    OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@map("inventory_movements")
+}
+
+model CashbookEntry {
+  id          BigInt    @id @default(autoincrement())
+  entryDate   DateTime? @map("entry_date") @db.Date
+  direction   String
+  category    String
+  source      String    @default("manual")
+  paymentMethod String? @map("payment_method")
+  amount      BigInt
+  reference   String    @unique
+  orderId     BigInt?   @map("order_id")
+  paymentId   BigInt?   @map("payment_id")
+  userId      BigInt?   @map("user_id")
+  note        String?
+  reversedAt  DateTime? @map("reversed_at")
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  order       Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  payment     Payment?  @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@map("cashbook_entries")
+}
+
+model ActivityLog {
+  id           BigInt    @id @default(autoincrement())
+  subjectType  String    @map("subject_type")
+  subjectId    BigInt    @map("subject_id")
+  event        String
+  properties   Json?
+  userId       BigInt?   @map("user_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@index([subjectType, subjectId])
+  @@map("activity_logs")
+}
+
+model SiteSetting {
+  id        BigInt   @id @default(autoincrement())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("site_settings")
+}
+
+model Banner {
+  id          BigInt    @id @default(autoincrement())
+  title       String
+  description String?
+  buttonLabel String?   @map("button_label")
+  buttonUrl   String?   @map("button_url")
+  imagePath   String?   @map("image_path")
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  @@map("banners")
+}
+
+model PaymentMethod {
+  id          BigInt   @id @default(autoincrement())
+  type        String
+  name        String
+  bankName    String?  @map("bank_name")
+  accountNumber String? @map("account_number")
+  accountName String?  @map("account_name")
+  imagePath   String?  @map("image_path")
+  instructions String?
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  @@index([type])
+  @@map("payment_methods")
+}

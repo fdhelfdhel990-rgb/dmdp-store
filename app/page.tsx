@@ -1,69 +1,25 @@
 import Image from "next/image";
+import Link from "next/link";
+import { categories, products, rupiah } from "@/lib/catalog";
+import { db } from "@/lib/db";
+import { connection } from "next/server";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+
+function ProductCard({ product, index }: { product: (typeof products)[number]; index: number }) {
+  return <Link className="product-card" href={`/produk/${product.slug}`}><div className={`product-art tone-${product.tone}`}><span className="product-tag">{product.tag || "DMT Print"}</span><span className="art-sheet"><i>{index % 2 ? "DMT" : "PRINT"}</i><b>{index % 2 ? "MAKE IT\nMEMORABLE" : "YOUR IDEA\nIN PRINT"}</b><small>CREATIVE STUDIO · 2026</small></span><span className="art-index">0{index + 1}</span></div><div className="product-info"><span>{product.category}</span><h3>{product.name}</h3><p>Mulai dari <strong>{rupiah(product.price)}</strong> <small>/ {product.unit}</small></p></div></Link>;
+}
+
+export const instant = false;
+
+export default async function Home() {
+  await connection();
+  let catalogProducts = products;
+  let catalogCategories = categories;
+  try {
+    const rows = await db.product.findMany({ where: { isActive: true, isFeatured: true, archivedAt: null, category: { isActive: true, archivedAt: null } }, include: { category: true }, orderBy: { sortOrder: "asc" } });
+    const allCategories = await db.category.findMany({ where: { isActive: true, archivedAt: null }, orderBy: { sortOrder: "asc" } });
+    if (rows.length) catalogProducts = rows.map((row) => ({name:row.name,slug:row.slug,category:row.category.name,price:Number(row.basePrice),unit:row.unit,tone:row.tone,tag:row.tag??"",sku:row.sku}));
+    if (allCategories.length) catalogCategories = allCategories.map((item) => ({name:item.name,slug:item.slug,icon:"✦"}));
+  } catch { /* render bundled starter catalog until the database is configured */ }
+  return <><div className="announcement">Kualitas cetak premium untuk setiap cerita <span>✳</span> Konsultasi desain gratis untuk pesanan pertama <a href="https://wa.me/">Hubungi kami ↗</a></div><header className="site-header"><Link className="brand" href="/"><Image src="/images/branding/dmt-print-logo.svg" width={132} height={42} alt="DMT Print" priority /></Link><nav><Link href="/">Beranda</Link><Link href="/katalog">Katalog</Link><Link href="/#cara-pesan">Cara Pesan</Link><Link href="/cek-pesanan">Lacak Pesanan</Link></nav><div className="header-actions"><Link className="admin-link" href="/admin">Masuk Admin</Link><Link className="cart-link" href="/keranjang"><Image src="/images/icons/cart.svg" width={20} height={20} alt=""/> <span>Keranjang</span></Link></div></header><main><section className="hero"><div className="hero-copy"><p className="eyebrow"><span/> CETAK IDE, JADIKAN NYATA</p><h1>Ide hebat layak<br/>dicetak <em>sempurna.</em></h1><p className="hero-description">Dari satu stiker sampai ribuan kemasan. Kami bantu setiap ide tampil berkesan dengan kualitas cetak yang bisa kamu andalkan.</p><div className="hero-actions"><Link className="button button-dark" href="/katalog">Jelajahi katalog <span>↗</span></Link><Link className="text-link" href="/cek-pesanan">Lacak pesanan <span>→</span></Link></div><div className="hero-proof"><div className="avatar-stack"><i>D</i><i>M</i><i>T</i><i>+</i></div><p><b>Dipercaya 2.400+ pelanggan</b><br/><span>UMKM, kreator, dan brand lokal</span></p><div className="proof-stars">★★★★★<small>4.9/5</small></div></div></div><div className="hero-visual"><div className="hero-orbit orbit-one"/><div className="hero-orbit orbit-two"/><div className="hero-card card-back"><small>STUDIO NOTES · 001</small><b>IDE BESAR.<br/>CETAK BERANI.</b><span>DESIGNED TO BE NOTICED</span></div><div className="hero-card card-front"><div className="card-top"><span>DMT / PRINT STUDIO</span><span>JKT · 2026</span></div><div className="poster-sun"/><b className="poster-word">MAKE<br/><i>WAVES</i></b><div className="poster-bottom"><span>YOUR NEXT BIG THING</span><span>01 — 08</span></div></div><span className="float-note note-one">✳ &nbsp; Bikin ide jadi nyata</span><span className="float-note note-two">✦ &nbsp; Hasil yang berkesan</span><span className="hero-scribble">✳</span></div><div className="hero-caption"><span>01 / 03</span><span>DESIGN MEETS PRINT</span><span>SCROLL TO EXPLORE ↓</span></div></section><section className="category-section"><div className="section-kicker"><span>KATEGORI</span><span>APA YANG KAMU BUTUHKAN?</span></div><div className="category-list">{catalogCategories.slice(0, 8).map((category) => <Link href={`/katalog?kategori=${category.slug}`} className="category-item" key={category.slug}><span className="category-icon">{category.icon}</span><span>{category.name}</span><i>↗</i></Link>)}</div></section><section className="products-section"><div className="section-heading"><div><p className="eyebrow"><span/> FAVORIT PELANGGAN</p><h2>Yang sering jadi<br/><em>andalan.</em></h2></div><Link className="text-link" href="/katalog">Lihat semua produk <span>↗</span></Link></div><div className="product-grid">{catalogProducts.slice(0, 4).map((product, index) => <ProductCard key={product.slug} product={product} index={index}/>)}</div><div className="product-grid product-grid-lower">{catalogProducts.slice(4).map((product, index) => <ProductCard key={product.slug} product={product} index={index + 4}/>)}</div></section><section className="manifesto"><span>✳</span><p>PRINTED WITH PURPOSE</p><h2>Bukan sekadar cetak.<br/>Ini cara ide <em>terlihat.</em></h2><Link href="/katalog" className="button button-light">Temukan produkmu <span>↗</span></Link><small>DMT PRINT STUDIO · JAKARTA, INDONESIA</small></section><section className="how-section" id="cara-pesan"><div className="section-heading"><div><p className="eyebrow"><span/> SEMUDAH ITU</p><h2>Dari ide ke tanganmu,<br/><em>empat langkah.</em></h2></div><p className="how-intro">Proses yang jelas, harga transparan,<br/>dan tim yang siap bantu dari awal.</p></div><div className="steps-grid"><article><span>01</span><div className="step-icon">↗</div><h3>Pilih produk</h3><p>Temukan produk cetak dan tentukan spesifikasi yang kamu butuhkan.</p></article><article><span>02</span><div className="step-icon">✳</div><h3>Kirim detail</h3><p>Isi informasi pesanan, detail produksi, dan unggah desainmu.</p></article><article><span>03</span><div className="step-icon">◎</div><h3>Konfirmasi harga</h3><p>Tim kami memeriksa pesanan dan mengirim penawaran final.</p></article><article><span>04</span><div className="step-icon">✦</div><h3>Siap diproduksi</h3><p>Setujui harga, selesaikan pembayaran, dan pantau pesananmu.</p></article></div></section><section className="closing-cta"><div><p className="eyebrow"><span/> ADA IDE DI KEPALA?</p><h2>Ayo kita<br/><em>wujudkan.</em></h2></div><Link href="/katalog" className="round-link">Jelajahi<br/>semua produk <span>↗</span></Link><div className="closing-spark">✳</div></section></main><footer className="site-footer"><Link href="/"><Image src="/images/branding/dmt-print-logo.svg" width={122} height={38} alt="DMT Print"/></Link><p>Ide hebat layak dicetak sempurna.</p><div><Link href="/katalog">Katalog</Link><Link href="/cek-pesanan">Lacak Pesanan</Link><a href="https://wa.me/">WhatsApp ↗</a></div><small>© 2026 DMT PRINT STUDIO · MADE FOR GOOD IDEAS</small></footer></>;
 }

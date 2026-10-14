@@ -1,36 +1,20 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DMT Print · Next.js
 
-## Getting Started
+Rebuild of the DMT Print Laravel storefront and admin workflow with Next.js App Router, Prisma/PostgreSQL, and Cloudflare R2.
 
-First, run the development server:
+## Local setup
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Copy `.env.example` to `.env` and fill in the PostgreSQL/Supabase connection, a random `SESSION_SECRET` (32+ characters), and Cloudflare R2 credentials.
+2. Install dependencies with `npm install`.
+3. Generate the client and apply the checked-in initial migration: `npm run db:generate`, then `npm run db:migrate`.
+4. Set `DMT_ADMIN_EMAIL` and `DMT_ADMIN_PASSWORD` before `npm run db:seed` to create the first admin account and populate the catalog, options, and payment methods.
+5. Start the app with `npm run dev`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The initial SQL migration is generated from `prisma/schema.prisma`. Applying it or seeding requires a configured database. File uploads require R2; order design and payment proof objects are stored privately.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Main routes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Public storefront: `/`, `/katalog`, `/produk/[slug]`
+- Customer flow: `/keranjang`, `/checkout`, `/cek-pesanan`, `/status-pesanan/[orderNumber]`
+- Admin: `/admin`, then dashboard sections for orders, catalog, categories, stock, cashbook, and site settings
+- Authenticated handlers: `/api/admin/*`; cart/checkout/order tracking: `/api/cart`, `/api/checkout`, `/api/track`
