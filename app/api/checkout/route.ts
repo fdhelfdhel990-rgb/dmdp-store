@@ -1,6 +1,6 @@
+import { jsonResponse } from "@/lib/api-response";
 import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { uploadFile } from "@/lib/r2";
 
@@ -15,15 +15,15 @@ export async function POST(request: Request) {
   const fulfillment = String(data.get("fulfillment_method") ?? "");
   const address = String(data.get("shipping_address") ?? "").trim();
   const region = String(data.get("shipping_region") ?? "").trim();
-  if (name.length < 2 || !phone || !["shipping", "pickup"].includes(fulfillment) || (fulfillment === "shipping" && (!address || !region)) || data.get("approved") !== "on") return NextResponse.json({ error: "Mohon lengkapi nama, nomor WhatsApp, informasi pengiriman, dan persetujuan pesanan." }, { status: 422 });
-  if(email&&(!/^\S+@\S+\.\S+$/.test(email)||email.length>255)||name.length>255||phone.length>30||address.length>2000||region.length>255||String(data.get("address_note")??"").length>500||String(data.get("customer_note")??"").length>2000||String(data.get("postal_code")??"").length>20) return NextResponse.json({error:"Panjang atau format data penerima tidak valid."},{status:422});
+  if (name.length < 2 || !phone || !["shipping", "pickup"].includes(fulfillment) || (fulfillment === "shipping" && (!address || !region)) || data.get("approved") !== "on") return jsonResponse({ error: "Mohon lengkapi nama, nomor WhatsApp, informasi pengiriman, dan persetujuan pesanan." }, { status: 422 });
+  if(email&&(!/^\S+@\S+\.\S+$/.test(email)||email.length>255)||name.length>255||phone.length>30||address.length>2000||region.length>255||String(data.get("address_note")??"").length>500||String(data.get("customer_note")??"").length>2000||String(data.get("postal_code")??"").length>20) return jsonResponse({error:"Panjang atau format data penerima tidak valid."},{status:422});
   const jar = await cookies();
   let cart: { slug: string; quantity: number; options: Record<string, string> }[] = [];
   try { cart = JSON.parse(jar.get(cartCookie)?.value ?? "[]") as typeof cart; } catch { cart = []; }
-  if (!cart.length) return NextResponse.json({ error: "Keranjang masih kosong." }, { status: 400 });
+  if (!cart.length) return jsonResponse({ error: "Keranjang masih kosong." }, { status: 400 });
   try {
     const dbProducts = await db.product.findMany({ where: { slug: { in: cart.map((item) => item.slug) }, isActive: true, archivedAt: null, category: { isActive: true, archivedAt: null } }, include: { options: { where: { isActive: true }, include: { values: { where: { isActive: true } } } } } });
-    if (!dbProducts.length) return NextResponse.json({ error: "Katalog database belum disiapkan. Hubungi admin." }, { status: 503 });
+    if (!dbProducts.length) return jsonResponse({ error: "Katalog database belum disiapkan. Hubungi admin." }, { status: 503 });
     const catalog = dbProducts;
     const lineItems = cart.map((item) => {
       const product = catalog.find((candidate) => candidate.slug === item.slug);
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       return { item, product, chosen, amount, basePrice };
     });
     const subtotal = lineItems.reduce((total, line) => total + line.amount * line.item.quantity, 0);
-    if(!Number.isSafeInteger(subtotal))return NextResponse.json({error:"Total pesanan melampaui batas yang dapat diproses."},{status:422});
+    if(!Number.isSafeInteger(subtotal))return jsonResponse({error:"Total pesanan melampaui batas yang dapat diproses."},{status:422});
     const orderNo = `DMT-${new Date().toISOString().slice(2, 10).replaceAll("-", "")}-${randomBytes(3).toString("hex").toUpperCase()}`;
     const token = randomBytes(32).toString("hex");
     const order = await db.$transaction(async (tx) => {
@@ -55,12 +55,12 @@ export async function POST(request: Request) {
       }
       return order;
     });
-    const response = NextResponse.json({ orderNumber: order.orderNumber, publicToken: token, message: "Pesanan berhasil dibuat." }, { status: 201 });
+    const response = jsonResponse({ orderNumber: order.orderNumber, publicToken: token, message: "Pesanan berhasil dibuat." }, { status: 201 });
     response.cookies.set("dmt_verified_order", order.orderNumber, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 2 });
     response.cookies.set(cartCookie, "", { httpOnly: true, path: "/", maxAge: 0 });
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Pesanan belum berhasil dibuat.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonResponse({ error: message }, { status: 500 });
   }
 }

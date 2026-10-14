@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { currentAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { rupiah } from "@/lib/catalog";
@@ -10,6 +11,7 @@ export const instant = false;
 const nav = [["Ringkasan", "/admin/dashboard"], ["Pesanan", "/admin/pesanan"], ["Produk", "/admin/produk"], ["Kategori", "/admin/kategori"], ["Stok", "/admin/stok"], ["Buku kas", "/admin/buku-kas"], ["Tampilan web", "/admin/tampilan-web"], ["Pengaturan", "/admin/pengaturan"]];
 
 export default async function AdminDashboard() {
+  await connection();
   const userId = await currentAdmin();
   if (!userId) redirect("/admin");
   try {
