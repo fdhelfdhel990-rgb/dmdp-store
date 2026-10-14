@@ -1,5 +1,25 @@
 import type { NextConfig } from "next";
 
+const r2PublicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL?.trim() || process.env.R2_PUBLIC_URL?.trim();
+const r2RemotePatterns: NonNullable<NextConfig["images"]>["remotePatterns"] = [];
+
+if (r2PublicUrl) {
+  try {
+    const publicUrl = new URL(r2PublicUrl);
+
+    if (publicUrl.protocol === "https:" && !publicUrl.username && !publicUrl.password && !publicUrl.search && !publicUrl.hash) {
+      r2RemotePatterns.push({
+        protocol: "https",
+        hostname: publicUrl.hostname,
+        port: publicUrl.port,
+        pathname: `${publicUrl.pathname.replace(/\/+$/, "")}/**`,
+      });
+    }
+  } catch {
+    // Invalid storage URLs are reported when a public file URL is requested.
+  }
+}
+
 const nextConfig: NextConfig = {
   /* config options here */
   experimental: {
@@ -7,6 +27,9 @@ const nextConfig: NextConfig = {
   },
   cacheComponents: true,
   partialPrefetching: true,
+  images: {
+    remotePatterns: r2RemotePatterns,
+  },
   turbopack: {
     rules: {
       "*.css": {

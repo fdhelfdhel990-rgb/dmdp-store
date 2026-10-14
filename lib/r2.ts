@@ -1,11 +1,23 @@
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
-const endpoint = process.env.R2_ENDPOINT;
-const bucket = process.env.R2_BUCKET;
+function environmentValue(...names: string[]): string | undefined {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+
+  return undefined;
+}
+
+const endpoint = environmentValue("CLOUDFLARE_R2_ENDPOINT", "R2_ENDPOINT");
+const bucket = environmentValue("CLOUDFLARE_R2_BUCKET", "R2_BUCKET");
 const client = endpoint ? new S3Client({
   region: "auto",
   endpoint,
-  credentials: { accessKeyId: process.env.R2_ACCESS_KEY_ID ?? "", secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "" },
+  credentials: {
+    accessKeyId: environmentValue("CLOUDFLARE_R2_ACCESS_KEY_ID", "R2_ACCESS_KEY_ID") ?? "",
+    secretAccessKey: environmentValue("CLOUDFLARE_R2_SECRET_ACCESS_KEY", "R2_SECRET_ACCESS_KEY") ?? "",
+  },
 }) : null;
 
 export async function uploadFile(key: string, file: File, visibility: "public" | "private" = "private"): Promise<string> {
@@ -25,7 +37,23 @@ export async function readFile(key: string) {
 }
 
 export function publicFileUrl(key: string): string {
-  const base = process.env.R2_PUBLIC_URL;
-  if (!base) throw new Error("R2_PUBLIC_URL harus dikonfigurasi untuk URL file publik.");
-  return `${base.replace(/\/$/, "")}/${key}`;
+  const configuredUrl = environmentValue("CLOUDFLARE_R2_PUBLIC_URL", "R2_PUBLIC_URL");
+  if (!configuredUrl) throw new Error("CLOUDFLARE_R2_PUBLIC_URL atau R2_PUBLIC_URL harus dikonfigurasi untuk URL file publik.");
+
+  let base: URL;
+  try {
+    base = new URL(configuredUrl);
+  } catch {
+    throw new Error("URL publik R2 harus berupa URL HTTPS yang valid.");
+  }
+
+  if (base.protocol !== "https:" || base.username || base.password || base.search || base.hash) {
+    throw new Error("URL publik R2 harus menggunakan HTTPS tanpa kredensial, query, atau fragment.");
+  }
+
+  const basePath = base.pathname.replace(/\/+$/, "");
+  const encodedKey = key.split("/").map((segment) => encodeURIComponent(segment)).join("/");
+  base.pathname = `${basePath}/${encodedKey}`;
+
+  return base.toString();
 }
