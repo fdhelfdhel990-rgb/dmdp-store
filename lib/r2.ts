@@ -37,8 +37,8 @@ export async function readFile(key: string) {
 }
 
 export function publicFileUrl(key: string): string {
-  const configuredUrl = environmentValue("CLOUDFLARE_R2_PUBLIC_URL", "R2_PUBLIC_URL");
-  if (!configuredUrl) throw new Error("CLOUDFLARE_R2_PUBLIC_URL atau R2_PUBLIC_URL harus dikonfigurasi untuk URL file publik.");
+  const configuredUrl = environmentValue("CLOUDFLARE_R2_PUBLIC_URL")
+    ?? "https://pub-b885074c7e424bceb5e8ad163c04ced7.r2.dev";
 
   let base: URL;
   try {

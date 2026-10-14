@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
-const r2PublicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL?.trim() || process.env.R2_PUBLIC_URL?.trim();
+const r2PublicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL?.trim()
+  || "https://pub-b885074c7e424bceb5e8ad163c04ced7.r2.dev";
 const r2RemotePatterns: NonNullable<NextConfig["images"]>["remotePatterns"] = [];
 
 if (r2PublicUrl) {
